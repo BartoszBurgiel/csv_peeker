@@ -7,13 +7,15 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/BartoszBurgiel/csv_peeker/shared"
 )
 
 // Server represents the server which provides the CSV file information and data.
 type Server struct {
-	conf config
+	conf     config
+	confLock *sync.Mutex
 }
 
 func NewServer(path string) (Server, error) {
@@ -22,7 +24,8 @@ func NewServer(path string) (Server, error) {
 		return Server{}, err
 	}
 	return Server{
-		conf: c,
+		conf:     c,
+		confLock: &sync.Mutex{},
 	}, nil
 }
 
@@ -35,7 +38,9 @@ func (s Server) Print() {
 // ServeFileContents serves the contents of the file in the JSON format to the provided writer
 func (s Server) ServeFileContents(label string, count int, filter shared.Filter, rw io.Writer) error {
 
+	s.confLock.Lock()
 	f, ok := s.conf[label]
+	s.confLock.Unlock()
 	if !ok {
 		return LabelDoesNotExist
 	}
@@ -106,7 +111,9 @@ func (s Server) handleCSVRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	label := splittedPath[1]
 
+	s.confLock.Lock()
 	f, ok := s.conf[label]
+	s.confLock.Unlock()
 	if !ok {
 		s.serve404(w, r)
 		return

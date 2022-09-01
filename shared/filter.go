@@ -25,9 +25,9 @@ func ParseURLFilter(url url.URL, columns []string) Filter {
 // match a row against the Filter
 func (f Filter) match(row []string) bool {
 	for k, v := range f {
-		if row[k] == v {
-			return true
+		if row[k] != v {
+			return false
 		}
 	}
-	return false
+	return true
 }
