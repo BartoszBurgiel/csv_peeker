@@ -128,6 +128,10 @@ func (f *File) setRowCount() error {
 func (f *File) readRows(count int, filter Filter) error {
 
 	f.rows = [][]string{}
+	err := f.ReadHeader()
+	if err != nil {
+		return err
+	}
 	if err := f.checkFile(); err != nil {
 		return err
 	}
