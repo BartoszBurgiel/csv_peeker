@@ -17,11 +17,11 @@ type File struct {
 	Columns  []string
 
 	rows  [][]string
-	Delim byte
+	Delim string
 }
 
 // NewFile returns a new File instance
-func NewFile(path string, delim byte) (*File, error) {
+func NewFile(path string, delim string) (*File, error) {
 	stats, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -60,35 +60,6 @@ func (f *File) ReadHeader() error {
 	return nil
 }
 
-// ReadRows reads first count rows that match the filter into the File instance
-func (f *File) ReadRows(count int, filter filter) error {
-
-	if err := f.checkFile(); err != nil {
-		return err
-	}
-
-	file, err := os.Open(f.Path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	sc := bufio.NewScanner(file)
-
-	for sc.Scan() {
-		r := sc.Text()
-		row := strings.Split(r, string(f.Delim))
-
-		if filter.match(row) {
-			f.rows = append(f.rows, row)
-		}
-		if len(f.rows) == count || len(f.rows) == ROWS_COUNT_LIMIT {
-			return nil
-		}
-	}
-	return nil
-
-}
-
 // JSON converts the metadata of the file to a JSON format
 func (f *File) JSON() []byte {
 	j, _ := json.Marshal(f)
@@ -96,8 +67,31 @@ func (f *File) JSON() []byte {
 }
 
 // GetRows returns the raw, unseperated rows of the CSV file
-func (f *File) GetRows() [][]string {
-	return f.rows
+func (f *File) GetRows(count int, filter Filter) ([][]string, error) {
+	err := f.readRows(count, filter)
+	if err != nil {
+		return [][]string{}, err
+	}
+	return f.rows, nil
+}
+
+// GetRowsAsCSV returns the stored rows of the file in the CSV format
+// together with the headers
+func (f *File) GetRowsAsCSV(count int, filter Filter) (string, error) {
+
+	b := strings.Builder{}
+	b.WriteString(strings.Join(f.Columns, string(f.Delim)))
+	b.WriteByte(10)
+
+	r, err := f.GetRows(count, filter)
+	if err != nil {
+		return "", err
+	}
+	for _, v := range r {
+		b.WriteString(strings.Join(v, string(f.Delim)))
+		b.WriteByte(10)
+	}
+	return b.String(), nil
 }
 
 func (f File) checkFile() error {
@@ -128,4 +122,34 @@ func (f *File) setRowCount() error {
 		f.RowCount++
 	}
 	return nil
+}
+
+// readRows reads first count rows that match the filter into the File instance
+func (f *File) readRows(count int, filter Filter) error {
+
+	f.rows = [][]string{}
+	if err := f.checkFile(); err != nil {
+		return err
+	}
+
+	file, err := os.Open(f.Path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	sc := bufio.NewScanner(file)
+
+	for sc.Scan() {
+		r := sc.Text()
+		row := strings.Split(r, string(f.Delim))
+
+		if filter.match(row) {
+			f.rows = append(f.rows, row)
+		}
+		if len(f.rows) == count || len(f.rows) == ROWS_COUNT_LIMIT {
+			return nil
+		}
+	}
+	return nil
+
 }

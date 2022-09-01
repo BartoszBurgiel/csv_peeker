@@ -13,7 +13,7 @@ import (
 type config map[string]*shared.File
 
 // newConfig returns an instance of the confic struct
-func newConfig(path string) (*config, error) {
+func newConfig(path string) (config, error) {
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -30,10 +30,10 @@ func newConfig(path string) (*config, error) {
 			return nil, ConfigFormatError
 		}
 		fsp := strings.Split(sp[1], ";delim:")
-		c[sp[0]], err = shared.NewFile(fsp[0], byte(fsp[1][0]))
+		c[sp[0]], err = shared.NewFile(fsp[0], fsp[1])
 		if err != nil {
 			return nil, err
 		}
 	}
-	return &c, nil
+	return c, nil
 }
