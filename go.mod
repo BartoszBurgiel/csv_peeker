@@ -1,4 +1,4 @@
-module bartosz.com
+module github.com/BartoszBurgiel/csv_peeker
 
 go 1.18
 

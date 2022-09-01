@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"bartosz.com/shared"
+	"github.com/BartoszBurgiel/csv_peeker/shared"
 )
 
 // config holds all of the files and their labels

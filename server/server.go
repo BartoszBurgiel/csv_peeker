@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"bartosz.com/shared"
+	"github.com/BartoszBurgiel/csv_peeker/shared"
 )
 
 // Server represents the server which provides the CSV file information and data.

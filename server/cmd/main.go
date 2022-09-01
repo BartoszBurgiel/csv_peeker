@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"bartosz.com/server"
+	"github.com/BartoszBurgiel/csv_peeker/server"
 )
 
 func main() {
