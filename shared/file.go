@@ -2,7 +2,9 @@ package shared
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -22,23 +24,34 @@ type File struct {
 
 // NewFile returns a new File instance
 func NewFile(path string, delim string) (*File, error) {
-	stats, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
 	f := &File{
-		Path:   path,
-		M_time: stats.ModTime(),
-		Size:   stats.Size(),
-		Delim:  delim,
+		Path:  path,
+		Delim: delim,
 	}
-	if err := f.setRowCount(); err != nil {
+
+	if err := f.LoadMetadata(); err != nil {
 		return nil, err
 	}
 	if err := f.ReadHeader(); err != nil {
 		return nil, err
 	}
 	return f, nil
+}
+
+// LoadMetadata into the file instance
+func (f *File) LoadMetadata() error {
+
+	stats, err := os.Stat(f.Path)
+	if err != nil {
+		return err
+	}
+	f.M_time = stats.ModTime()
+	f.Size = stats.Size()
+	err = f.setRowCount()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // ReadHeader reads the header of the CSV file into the file instance
@@ -75,6 +88,38 @@ func (f *File) GetRows(count int, filter Filter) ([][]string, error) {
 	return f.rows, nil
 }
 
+func (f *File) GetTailAsCSV(count int, filter Filter) (string, error) {
+
+	err := f.LoadMetadata()
+	if err != nil {
+		return "", err
+	}
+
+	toSkip := f.RowCount - count
+	file, err := os.Open(f.Path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	sc := bufio.NewScanner(file)
+	b := strings.Builder{}
+	b.WriteString(strings.Join(f.Columns, f.Delim))
+	b.WriteByte(10)
+	// skip the header
+	sc.Scan()
+
+	for sc.Scan() {
+		toSkip--
+		if toSkip < 0 {
+			t := sc.Text()
+			b.WriteString(t)
+			b.WriteByte(10)
+		}
+	}
+	return b.String(), nil
+}
+
 // GetRowsAsCSV returns the stored rows of the file in the CSV format
 // together with the headers
 func (f *File) GetRowsAsCSV(count int, filter Filter) (string, error) {
@@ -106,7 +151,7 @@ func (f File) checkFile() error {
 }
 
 func (f *File) setRowCount() error {
-
+	f.RowCount = 0
 	if err := f.checkFile(); err != nil {
 		return err
 	}
@@ -116,10 +161,20 @@ func (f *File) setRowCount() error {
 		return err
 	}
 	defer file.Close()
-	sc := bufio.NewScanner(file)
+	buf := make([]byte, 32*1024)
+	lineSep := []byte{'\n'}
 
-	for sc.Scan() {
-		f.RowCount++
+	for {
+		c, err := file.Read(buf)
+		f.RowCount += bytes.Count(buf[:c], lineSep)
+
+		switch {
+		case err == io.EOF:
+			return nil
+
+		case err != nil:
+			return err
+		}
 	}
 	return nil
 }

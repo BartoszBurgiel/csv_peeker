@@ -120,6 +120,11 @@ func (s Server) handleCSVRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.URL.RawQuery == "" {
+		err := f.LoadMetadata()
+		if err != nil {
+			s.serveError(w, r, err.Error())
+			return
+		}
 		data := f.JSON()
 		w.WriteHeader(http.StatusAccepted)
 		fmt.Fprintln(w, string(data))
@@ -136,6 +141,16 @@ func (s Server) handleCSVRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		cnt = c
+	}
+
+	if r.URL.Query().Has("tail") {
+		data, err := f.GetTailAsCSV(cnt, filter)
+		if err != nil {
+			s.serveError(w, r, err.Error())
+			return
+		}
+		fmt.Fprint(w, data)
+		return
 	}
 
 	data, err := f.GetRowsAsCSV(cnt, filter)
