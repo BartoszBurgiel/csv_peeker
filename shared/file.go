@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -12,11 +13,12 @@ import (
 
 // File represents a single CSV file
 type File struct {
-	Path     string
-	M_time   time.Time
-	Size     int64
-	RowCount int
-	Columns  []string
+	Path              string
+	M_time            time.Time
+	Size              int64
+	SizeHumanReadable string
+	RowCount          int
+	Columns           []string
 
 	rows  [][]string
 	Delim string
@@ -47,6 +49,7 @@ func (f *File) LoadMetadata() error {
 	}
 	f.M_time = stats.ModTime()
 	f.Size = stats.Size()
+	f.SizeHumanReadable = fmt.Sprintf("%.2f MB", float32(f.Size)/1_000_000.0)
 	err = f.setRowCount()
 	if err != nil {
 		return err

@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,16 +18,22 @@ import (
 type Server struct {
 	conf     config
 	confLock *sync.Mutex
+	log      *log.Logger
 }
 
-func NewServer(path string) (Server, error) {
-	c, err := newConfig(path)
+func NewServer(configPath, logPath string) (Server, error) {
+	c, err := newConfig(configPath)
+	if err != nil {
+		return Server{}, err
+	}
+	f, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return Server{}, err
 	}
 	return Server{
 		conf:     c,
 		confLock: &sync.Mutex{},
+		log:      log.New(f, "request,", log.Ldate|log.Ltime),
 	}, nil
 }
 
@@ -58,6 +66,7 @@ func (s Server) ServeFileContents(label string, count int, filter shared.Filter,
 }
 
 func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.log.Printf("%s,%s\n", r.URL, r.Header.Get("User-Agent"))
 
 	if r.Method != http.MethodGet {
 		s.serveBadRequest(w, r)

@@ -12,7 +12,8 @@ func main() {
 
 	configPath := os.Args[1]
 	port := os.Args[2]
-	s, err := server.NewServer(configPath)
+	logPath := os.Args[3]
+	s, err := server.NewServer(configPath, logPath)
 	if err != nil {
 		fmt.Println(err)
 		return
